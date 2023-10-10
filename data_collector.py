@@ -37,13 +37,13 @@ class GrowattApi:
 
     def __fetch_url(self, action: str = "login") -> str:
         return {
-            "login": "http://server-api.growatt.com/login",
-            "list_plants": "http://server-api.growatt.com/selectPlant/getPlantList",
-            "plant_devices": "http://server-api.growatt.com/panel/getDevicesByPlantList",
-            "get_daily_logs_tlx": "http://server-api.growatt.com/device/getTLXHistory",
-            "get_daily_logs_inv": "http://server-api.growatt.com/device/getInverterHistor",
-            "get_monthly_energy": "http://server-api.growatt.com/energy/compare/getDevicesMonthChart",
-            "get_daily_energy": "http://server-api.growatt.com/energy/compare/getDevicesDayChart",
+            "login": "https://server.growatt.com/login",
+            "list_plants": "https//server.growatt.com/selectPlant/getPlantList",
+            "plant_devices": "https://server.growatt.com/panel/getDevicesByPlantList",
+            "get_daily_logs_tlx": "https://server.growatt.com/device/getTLXHistory",
+            "get_daily_logs_inv": "https://server.growatt.com/device/getInverterHistor",
+            "get_monthly_energy": "https://server.growatt.com/energy/compare/getDevicesMonthChart",
+            "get_daily_energy": "https://server.growatt.com/energy/compare/getDevicesDayChart",
         }.get(action)
 
     def login(self, session: requests.Session, username: str, password: str) -> None:
