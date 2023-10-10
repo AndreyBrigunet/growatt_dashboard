@@ -272,6 +272,10 @@ class Job:
     def _insert(self, time_series_data: List[Tuple], table_name: str) -> None:
         connection = sqlite3.connect(DATABASE_NAME)
         cursor = connection.cursor()
+
+        if type(time_series_data) != list:
+            time_series_data = [time_series_data]
+
         cursor.executemany(
             f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?)", time_series_data
         )
@@ -282,8 +286,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--conf", action="append", default="config.json")
     args = parser.parse_args()
-    job = Job(args.conf).run(backfill=not pathlib.Path(DATABASE_NAME).exists())
-    # job.run(not pathlib.Path(DATABASE_NAME).exists())
+
+    job = Job(args.conf)
+    job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     scheduler.add_job(
         job.run,
