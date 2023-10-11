@@ -44,6 +44,7 @@ class GrowattApi:
             "get_daily_logs_inv": "https://server.growatt.com/device/getInverterHistor",
             "get_monthly_energy": "https://server.growatt.com/energy/compare/getDevicesMonthChart",
             "get_daily_energy": "https://server.growatt.com/energy/compare/getDevicesDayChart",
+            "get_meter_history": "https://server.growatt.com/device/getMeterHistory"
         }.get(action)
 
     def login(self, session: requests.Session, username: str, password: str) -> None:
@@ -137,6 +138,21 @@ class GrowattApi:
             },
         )
         return response.json()
+    
+    def get_meter_history_data(self, date: str) -> List[Dict]:
+        url = self.__fetch_url("get_meter_history")
+        response = self.session.post(
+            url,
+            data={
+                "datalogSn": "XGD6CJV05Y",
+                "deviceType": 134,
+                "addr": 1,
+                "startDate": date,
+                "endDate": date,
+                "start": 0,
+            },
+        )
+        return response.json()
 
     def get_daily_energy_data(self, plant_id: str, date: str) -> List[Dict]:
         url = self.__fetch_url("get_daily_energy")
@@ -226,6 +242,12 @@ class Job:
             )
         )
 
+    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
+        data = self.api.get_meter_history_data(
+            f"{date.year}-{date.month}-{date.day}",
+        )
+        print(data)
+         
     def get_time_series_data_kwh(self, date: datetime.date) -> List[Tuple]:
         data = self.api.get_monthly_energy_data(
             self.conf.get("plant_id"),
@@ -289,7 +311,7 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    print(job.get_time_series_data_pac(today.date()))
+    job.get_meter_data(today.date())
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
