@@ -297,7 +297,12 @@ class Job:
             "1",
             f"{date.year}-{date.month}-{date.day}",
         )
-        print(data)
+        json_object = json.dumps(data, indent=4)
+ 
+        # Writing to sample.json
+        with open("sample.json", "w") as outfile:
+            outfile.write(json_object)
+        print("data ok.")
          
     def get_time_series_data_kwh(self, date: datetime.date) -> List[Tuple]:
         data = self.api.get_monthly_energy_data(
