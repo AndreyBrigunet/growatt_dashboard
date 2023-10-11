@@ -317,6 +317,7 @@ class Job:
         print(data)
         
     def get_meter_data(self, date: datetime.date) -> List[Tuple]:
+        self.__create_table()
         data = self.api.get_meter_history_data(
             "XGD6CJV05Y", 
             "134", 
