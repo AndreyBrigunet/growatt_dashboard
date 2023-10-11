@@ -51,6 +51,7 @@ class GrowattApi:
             "get_daily_energy": "https://server.growatt.com/energy/compare/getDevicesDayChart",
             "get_meter_history": "https://server.growatt.com/device/getMeterHistory",
             "get_meter_list": "https://server.growatt.com/device/getMeterList",
+            "get_plant_history": "https://server.growatt.com/device/getTLXHistory",
         }.get(action)
 
     def login(self, session: requests.Session, username: str, password: str) -> None:
@@ -195,7 +196,7 @@ class GrowattApi:
             have_next = response_json["obj"]["haveNext"]
 
             if have_next:
-                time.sleep(5)
+                time.sleep(10)
 
         logs.reverse()
         return logs
