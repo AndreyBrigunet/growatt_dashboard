@@ -1,5 +1,6 @@
 import argparse
 import calendar
+import time
 import datetime
 import json
 import logging
@@ -163,20 +164,37 @@ class GrowattApi:
         )
         return response.json()
     
-    def get_meter_history_data(self, date: str) -> List[Dict]:
+    def get_meter_history_data(
+        self, datalogSn: str, deviceType: str, addr: int, date: str
+    ) -> List[Dict]:
         url = self.__fetch_url("get_meter_history")
-        response = self.session.post(
-            url,
-            data={
-                "datalogSn": "XGD6CJV05Y",
-                "deviceType": 134,
-                "addr": 1,
-                "startDate": date,
-                "endDate": date,
-                "start": 0,
-            },
-        )
-        return response.json()
+        logs, start_index, have_next = [], 0, True
+
+        while have_next:
+            response = self.session.post(
+                url,
+                data={
+                    "datalogSn": datalogSn,
+                    "deviceType": deviceType,
+                    "addr": addr,
+                    "startDate": date,
+                    "endDate": date,
+                    "start": start_index,
+                },
+            )
+            response_json = response.json()
+
+            for log in response_json["obj"]["datas"]:
+                logs.append(log)
+
+            start_index = response_json["obj"]["start"]
+            have_next = response_json["obj"]["haveNext"]
+
+            if have_next:
+                time.sleep(5)
+
+        logs.reverse()
+        return logs
 
     def get_daily_energy_data(self, plant_id: str, date: str) -> List[Dict]:
         url = self.__fetch_url("get_daily_energy")
@@ -274,6 +292,9 @@ class Job:
         
     def get_meter_data(self, date: datetime.date) -> List[Tuple]:
         data = self.api.get_meter_history_data(
+            "XGD6CJV05Y", 
+            "134", 
+            1,
             f"{date.year}-{date.month}-{date.day}",
         )
         print(data)
@@ -341,7 +362,7 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    job.get_meters()
+    job.get_meter_data()
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
