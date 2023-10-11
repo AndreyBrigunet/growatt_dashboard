@@ -165,7 +165,7 @@ class GrowattApi:
         return response.json()
     
     def get_meter_history_data(
-        self, datalogSn: str, deviceType: str, addr: int, date: str
+        self, datalogSn: str, deviceType: str, addr: str, date: str
     ) -> List[Dict]:
         url = self.__fetch_url("get_meter_history")
         logs, start_index, have_next = [], 0, True
@@ -294,7 +294,7 @@ class Job:
         data = self.api.get_meter_history_data(
             "XGD6CJV05Y", 
             "134", 
-            1,
+            "1",
             f"{date.year}-{date.month}-{date.day}",
         )
         print(data)
@@ -362,7 +362,7 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    job.get_meter_data()
+    job.get_meter_data(today.date())
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
