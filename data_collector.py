@@ -288,17 +288,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     job = Job(args.conf)
-    job.run(not pathlib.Path(DATABASE_NAME).exists())
+    today = datetime.datetime.now()
+    print(get_time_series_data_pac(today.date()))
+    # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
-    scheduler.add_job(
-        job.run,
-        trigger="interval",
-        hours=SCHEDULER_INTERVAL,
-        coalesce=True,
-        args=(not pathlib.Path(DATABASE_NAME).exists(),),
-    )
+    # scheduler.add_job(
+    #     job.run,
+    #     trigger="interval",
+    #     hours=SCHEDULER_INTERVAL,
+    #     coalesce=True,
+    #     args=(not pathlib.Path(DATABASE_NAME).exists(),),
+    # )
 
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
+    # try:
+    #     scheduler.start()
+    # except (KeyboardInterrupt, SystemExit):
+    #     scheduler.shutdown()
