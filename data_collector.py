@@ -343,7 +343,7 @@ class Job:
         # {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
         #             for meter in response_json["datas"]
         
-        # self.insert_meter(, table_name=self.Meter)
+        self.insert_meter(result, table_name=self.Meter)
 
     def run(self, backfill=False):
         if backfill:
