@@ -284,26 +284,6 @@ class Job:
             )
         )
 
-    def get_meters(self) -> List[Tuple]:
-        data = self.api.get_meters(
-            self.conf.get("plant_id"),
-        )
-        print(data)
-        
-    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
-        data = self.api.get_meter_history_data(
-            "XGD6CJV05Y", 
-            "134", 
-            "1",
-            f"{date.year}-{date.month}-{date.day}",
-        )
-        json_object = json.dumps(data, indent=4)
- 
-        # Writing to sample.json
-        with open("sample.json", "w") as outfile:
-            outfile.write(json_object)
-        print("data ok.")
-         
     def get_time_series_data_kwh(self, date: datetime.date) -> List[Tuple]:
         data = self.api.get_monthly_energy_data(
             self.conf.get("plant_id"),
@@ -328,6 +308,26 @@ class Job:
                 ),
             )
         )
+
+    def get_meters(self) -> List[Tuple]:
+        data = self.api.get_meters(
+            self.conf.get("plant_id"),
+        )
+        print(data)
+        
+    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
+        data = self.api.get_meter_history_data(
+            "XGD6CJV05Y", 
+            "134", 
+            "1",
+            f"{date.year}-{date.month}-{date.day}",
+        )
+        json_object = json.dumps(data, indent=4)
+ 
+        # Writing to sample.json
+        with open("sample.json", "w") as outfile:
+            outfile.write(json_object)
+        print("data ok.")
 
     def run(self, backfill=False):
         if backfill:
@@ -367,7 +367,8 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    job.get_meter_data(today.date())
+    print (job.get_time_series_data_pac(today.date()))
+    # job.get_meter_data(today.date())
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
