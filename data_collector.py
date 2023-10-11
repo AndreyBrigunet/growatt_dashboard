@@ -289,7 +289,7 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    print(get_time_series_data_pac(today.date()))
+    print(job.get_time_series_data_pac(today.date()))
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
