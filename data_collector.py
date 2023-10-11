@@ -378,6 +378,7 @@ class Job:
         logger.info(f"Extract and insert meter for {date.year}-{date.month}-{date.day}.")
 
     def get_meter_data(self, date: datetime.date) -> List[Tuple]:
+        self.__create_table()
         data = self.api.get_meter_history_data(
             self.conf.get("datalogSn"),
             self.conf.get("deviceType"),
