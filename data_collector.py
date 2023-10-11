@@ -44,7 +44,8 @@ class GrowattApi:
             "get_daily_logs_inv": "https://server.growatt.com/device/getInverterHistor",
             "get_monthly_energy": "https://server.growatt.com/energy/compare/getDevicesMonthChart",
             "get_daily_energy": "https://server.growatt.com/energy/compare/getDevicesDayChart",
-            "get_meter_history": "https://server.growatt.com/device/getMeterHistory"
+            "get_meter_history": "https://server.growatt.com/device/getMeterHistory",
+            "get_meter_list": "https://server.growatt.com/device/getMeterList",
         }.get(action)
 
     def login(self, session: requests.Session, username: str, password: str) -> None:
@@ -79,6 +80,29 @@ class GrowattApi:
                 ]
             )
         return plants_list
+    
+    def get_meters(self, plant_id: str) -> List[Dict]:
+        current_page, pages, meters_list = 0, -1, []
+
+        while current_page != pages:
+            current_page += 1
+            response = self.session.post(
+                self.__fetch_url("get_meter_list"),
+                data={
+                    "alias": "",
+                    "plantId": plant_id,
+                    "currPage": current_page,
+                },
+            )
+            response_json = response.json()
+            pages = response_json["pages"]
+            meters_list.extend(
+                [
+                    {"id": meter["id"], "plant_name": meter["plantName"]}
+                    for meter in response_json["datas"]
+                ]
+            )
+        return meters_list
 
     def get_plant_devices(self, plant_id: str) -> List[Dict]:
         current_page, pages, devices = 0, -1, []
@@ -242,6 +266,12 @@ class Job:
             )
         )
 
+    def get_meters(self) -> List[Tuple]:
+        data = self.api.get_meters(
+            self.conf.get("plant_id"),
+        )
+        print(data)
+        
     def get_meter_data(self, date: datetime.date) -> List[Tuple]:
         data = self.api.get_meter_history_data(
             f"{date.year}-{date.month}-{date.day}",
@@ -311,7 +341,7 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    job.get_meter_data(today.date())
+    job.get_meters()
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
