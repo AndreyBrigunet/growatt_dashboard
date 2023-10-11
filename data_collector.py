@@ -338,7 +338,20 @@ class Job:
         #         ),
             
         # )
-        result = list((item["dataLogSn"], item["posiActivePower"], item["reverActivePower"]) for item in data)
+        # {"year":2023,"month":9,"dayOfMonth":11,"hourOfDay":15,"minute":49,"second":29}
+
+        result = list((
+            int(datetime.datetime(
+                item["calendar"]["year"], 
+                item["calendar"]["month"], 
+                item["calendar"]["dayOfMonth"], 
+                item["calendar"]["hourOfDay"], 
+                item["calendar"]["minute"], 
+                item["calendar"]["second"]
+            ).timestamp()), 
+            item["posiActivePower"], 
+            item["reverActivePower"]) for item in data
+        )
 
         print(result)
         # {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
