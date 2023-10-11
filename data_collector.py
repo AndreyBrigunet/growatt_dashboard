@@ -214,6 +214,7 @@ class GrowattApi:
 class Job:
     PAC = "pac"
     KWH = "kwh"
+    Meter = "meter"
 
     def __init__(self, conf_path):
         self.conf = self.__load_conf(conf_path)
@@ -322,12 +323,27 @@ class Job:
             "1",
             f"{date.year}-{date.month}-{date.day}",
         )
-        json_object = json.dumps(data, indent=4)
- 
-        # Writing to sample.json
-        with open("sample.json", "w") as outfile:
-            outfile.write(json_object)
-        print("data ok.")
+        # meter = list(
+      
+        #         [
+        #             (date + datetime.timedelta(days=count)).timestamp()
+        #             for count in range(calendar.monthrange(date.year, date.month)[1])
+        #         ],
+        #         list(
+        #             map(
+        #                 lambda x: 0 if not x else x,
+        #                 data.get("obj")[0]["datas"]["energy"],
+        #             )
+        #         ),
+            
+        # )
+        result = list((item["dataLogSn"], item["posiActivePower"], item["reverActivePower"]) for item in data)
+
+        print(result)
+        # {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
+        #             for meter in response_json["datas"]
+        
+        # self.insert_meter(, table_name=self.Meter)
 
     def run(self, backfill=False):
         if backfill:
@@ -346,6 +362,19 @@ class Job:
         cursor = connection.cursor()
         cursor.execute(f"CREATE TABLE {self.PAC}(timestamp PRIMARY KEY, watt)")
         cursor.execute(f"CREATE TABLE {self.KWH}(timestamp PRIMARY KEY, kilowatthour)")
+        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp PRIMARY KEY, posiActivePower, reverActivePower)")
+
+    def insert_meter(self, time_series_data: List[Tuple], table_name: str) -> None:
+        connection = sqlite3.connect(DATABASE_NAME)
+        cursor = connection.cursor()
+
+        if type(time_series_data) != list:
+            time_series_data = [time_series_data]
+
+        cursor.executemany(
+            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?)", time_series_data
+        )
+        connection.commit()
 
     def _insert(self, time_series_data: List[Tuple], table_name: str) -> None:
         connection = sqlite3.connect(DATABASE_NAME)
@@ -367,8 +396,8 @@ if __name__ == "__main__":
 
     job = Job(args.conf)
     today = datetime.datetime.now()
-    print (job.get_time_series_data_pac(today.date()))
-    # job.get_meter_data(today.date())
+    # print (job.get_time_series_data_pac(today.date()))
+    job.get_meter_data(today.date())
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
