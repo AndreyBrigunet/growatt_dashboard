@@ -22,6 +22,10 @@ DATABASE_NAME = "data/solar_data.sqlite"
 scheduler = BlockingScheduler()
 SCHEDULER_INTERVAL = 12
 
+# sqlite3 -column -header
+# .open /home/andreybrigunetofficial/growatt_dashboard/data/solar_data.sqlite
+# SELECT * FROM meter;
+
 
 # Based on https://github.com/Antonji-py/solar-providers-manager
 class GrowattApi:
@@ -196,6 +200,38 @@ class GrowattApi:
         logs.reverse()
         return logs
 
+    def get_plant_history_data(
+        self, datalogSn: str, deviceType: str, addr: str, date: str
+    ) -> List[Dict]:
+        url = self.__fetch_url("get_plant_history")
+        logs, start_index, have_next = [], 0, True
+
+        while have_next:
+            response = self.session.post(
+                url,
+                data={
+                    "datalogSn": datalogSn,
+                    "deviceType": deviceType,
+                    "addr": addr,
+                    "startDate": date,
+                    "endDate": date,
+                    "start": start_index,
+                },
+            )
+            response_json = response.json()
+
+            for log in response_json["obj"]["datas"]:
+                logs.append(log)
+
+            start_index = response_json["obj"]["start"]
+            have_next = response_json["obj"]["haveNext"]
+
+            if have_next:
+                time.sleep(5)
+
+        logs.reverse()
+        return logs
+
     def get_daily_energy_data(self, plant_id: str, date: str) -> List[Dict]:
         url = self.__fetch_url("get_daily_energy")
         response = self.session.post(
@@ -316,12 +352,11 @@ class Job:
         )
         print(data)
         
-    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
-        self.__create_table()
-        data = self.api.get_meter_history_data(
-            "XGD6CJV05Y", 
-            "134", 
-            "1",
+    def get_plant_data(self, date: datetime.date) -> List[Tuple]:
+        data = self.api.get_plant_history_data(
+            self.conf.get("datalogSn"),
+            self.conf.get("deviceType"),
+            self.conf.get("addr"),
             f"{date.year}-{date.month}-{date.day}",
         )
 
@@ -338,10 +373,37 @@ class Job:
             item["posiActivePower"], 
             item["reverActivePower"]) for item in data
         )
-
-        print(result)
         
-        self.insert_meter(result, table_name=self.Meter)
+        self._insert_meter(result, table_name=self.Meter)
+        logger.info(f"Extract and insert meter for {date.year}-{date.month}-{date.day}.")
+
+    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
+        data = self.api.get_meter_history_data(
+            self.conf.get("datalogSn"),
+            self.conf.get("deviceType"),
+            self.conf.get("addr"),
+            f"{date.year}-{date.month}-{date.day}",
+        )
+
+        result = list((
+            int(datetime.datetime(
+                item["calendar"]["year"], 
+                item["calendar"]["month"], 
+                item["calendar"]["dayOfMonth"], 
+                item["calendar"]["hourOfDay"], 
+                item["calendar"]["minute"], 
+                item["calendar"]["second"]
+            ).timestamp()),
+            item["dataLogSn"], 
+            item["posiActivePower"], # Kw
+            item["reverActivePower"], # Kw
+            item["activePower"], # w
+            item["reverseActiveEnergy"] # w
+            ) for item in data
+        )
+        
+        self._insert_meter(result, table_name=self.Meter)
+        logger.info(f"Extract and insert meter for {date.year}-{date.month}-{date.day}.")
 
     def run(self, backfill=False):
         if backfill:
@@ -360,9 +422,9 @@ class Job:
         cursor = connection.cursor()
         cursor.execute(f"CREATE TABLE {self.PAC}(timestamp, plantId, watt, PRIMARY KEY (timestamp, plantId))")
         cursor.execute(f"CREATE TABLE {self.KWH}(timestamp, plantId, kilowatthour, PRIMARY KEY (timestamp, plantId))")
-        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp, dataLogSn, posiActivePower, reverActivePower, PRIMARY KEY (timestamp, dataLogSn))")
+        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp, dataLogSn, posiActivePower, reverActivePower, activePower, reverseActiveEnergy, PRIMARY KEY (timestamp, dataLogSn))")
 
-    def insert_meter(self, time_series_data: List[Tuple], table_name: str) -> None:
+    def _insert_meter(self, time_series_data: List[Tuple], table_name: str) -> None:
         connection = sqlite3.connect(DATABASE_NAME)
         cursor = connection.cursor()
 
@@ -370,7 +432,7 @@ class Job:
             time_series_data = [time_series_data]
 
         cursor.executemany(
-            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?, ?)", time_series_data
+            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?, ?, ?, ?)", time_series_data
         )
         connection.commit()
 
