@@ -98,7 +98,7 @@ class GrowattApi:
             pages = response_json["pages"]
             meters_list.extend(
                 [
-                    {"id": meter["id"], "plant_name": meter["plantName"]}
+                    {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
                     for meter in response_json["datas"]
                 ]
             )
