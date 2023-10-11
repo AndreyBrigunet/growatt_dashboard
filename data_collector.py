@@ -324,21 +324,6 @@ class Job:
             "1",
             f"{date.year}-{date.month}-{date.day}",
         )
-        # meter = list(
-      
-        #         [
-        #             (date + datetime.timedelta(days=count)).timestamp()
-        #             for count in range(calendar.monthrange(date.year, date.month)[1])
-        #         ],
-        #         list(
-        #             map(
-        #                 lambda x: 0 if not x else x,
-        #                 data.get("obj")[0]["datas"]["energy"],
-        #             )
-        #         ),
-            
-        # )
-        # {"year":2023,"month":9,"dayOfMonth":11,"hourOfDay":15,"minute":49,"second":29}
 
         result = list((
             int(datetime.datetime(
@@ -348,14 +333,13 @@ class Job:
                 item["calendar"]["hourOfDay"], 
                 item["calendar"]["minute"], 
                 item["calendar"]["second"]
-            ).timestamp()), 
+            ).timestamp()),
+            item["dataLogSn"], 
             item["posiActivePower"], 
             item["reverActivePower"]) for item in data
         )
 
         print(result)
-        # {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
-        #             for meter in response_json["datas"]
         
         self.insert_meter(result, table_name=self.Meter)
 
@@ -374,9 +358,9 @@ class Job:
     def __create_table(self):
         connection = sqlite3.connect(DATABASE_NAME)
         cursor = connection.cursor()
-        cursor.execute(f"CREATE TABLE {self.PAC}(timestamp PRIMARY KEY, watt)")
-        cursor.execute(f"CREATE TABLE {self.KWH}(timestamp PRIMARY KEY, kilowatthour)")
-        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp PRIMARY KEY, posiActivePower, reverActivePower)")
+        cursor.execute(f"CREATE TABLE {self.PAC}(timestamp, plantId, watt, PRIMARY KEY (timestamp, plantId))")
+        cursor.execute(f"CREATE TABLE {self.KWH}(timestamp, plantId, kilowatthour, PRIMARY KEY (timestamp, plantId))")
+        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp, dataLogSn, posiActivePower, reverActivePower, PRIMARY KEY (timestamp, dataLogSn))")
 
     def insert_meter(self, time_series_data: List[Tuple], table_name: str) -> None:
         connection = sqlite3.connect(DATABASE_NAME)
@@ -386,7 +370,7 @@ class Job:
             time_series_data = [time_series_data]
 
         cursor.executemany(
-            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?)", time_series_data
+            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?, ?)", time_series_data
         )
         connection.commit()
 
