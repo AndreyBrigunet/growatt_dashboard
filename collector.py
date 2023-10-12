@@ -43,7 +43,7 @@ class GrowattApi:
     def __fetch_url(self, action: str = "login") -> str:
         return {
             "login": "https://server.growatt.com/login",
-            "list_plants": "https//server.growatt.com/selectPlant/getPlantList",
+            "list_plants": "https://server.growatt.com/selectPlant/getPlantList",
             "plant_devices": "https://server.growatt.com/panel/getDevicesByPlantList",
             "get_daily_logs_tlx": "https://server.growatt.com/device/getTLXHistory",
             "get_daily_logs_inv": "https://server.growatt.com/device/getInverterHistor",
@@ -51,7 +51,8 @@ class GrowattApi:
             "get_daily_energy": "https://server.growatt.com/energy/compare/getDevicesDayChart",
             "get_meter_history": "https://server.growatt.com/device/getMeterHistory",
             "get_meter_list": "https://server.growatt.com/device/getMeterList",
-            "get_plant_history": "https://server.growatt.com/device/getTLXHistory",
+            "get_plant_history_tlx": "https://server.growatt.com/device/getTLXHistory",
+            "get_plant_history_inv": "https://server.growatt.com/device/getInverterHistory",
         }.get(action)
 
     def login(self, session: requests.Session, username: str, password: str) -> None:
@@ -94,7 +95,7 @@ class GrowattApi:
             current_page += 1
             response = self.session.post(
                 self.__fetch_url("get_meter_list"),
-                data={
+                data = {
                     "alias": "",
                     "plantId": plant_id,
                     "currPage": current_page,
@@ -102,12 +103,16 @@ class GrowattApi:
             )
             response_json = response.json()
             pages = response_json["pages"]
-            meters_list.extend(
-                [
-                    {"datalogSn": meter["datalogSn"], "deviceType": meter["deviceType"], "plantId": meter["plantId"], "plant_name": meter["plantName"]}
-                    for meter in response_json["datas"]
-                ]
-            )
+            meters_list.extend([
+                {
+                    "datalogSn": meter["datalogSn"],
+                    "deviceType": meter["deviceType"],
+                    "addr": meter["addr"],
+                    "plantId": meter["plantId"],
+                    "plant_name": meter["plantName"]
+                }
+                for meter in response_json["datas"]
+            ])
         return meters_list
 
     def get_plant_devices(self, plant_id: str) -> List[Dict]:
@@ -149,8 +154,11 @@ class GrowattApi:
             for log in response_json["obj"]["datas"]:
                 logs.append(log)
 
-            start_index = response_json["obj"]["start"]
             have_next = response_json["obj"]["haveNext"]
+            
+            if have_next:
+                start_index = response_json["obj"]["start"]
+                time.sleep(5)
 
         logs.reverse()
         return logs
@@ -170,7 +178,7 @@ class GrowattApi:
         return response.json()
     
     def get_meter_history_data(
-        self, datalogSn: str, deviceType: str, addr: str, date: str
+        self, datalogSn: str, deviceType: str, addr: str, date_start: str, date_end: str
     ) -> List[Dict]:
         url = self.__fetch_url("get_meter_history")
         logs, start_index, have_next = [], 0, True
@@ -182,8 +190,8 @@ class GrowattApi:
                     "datalogSn": datalogSn,
                     "deviceType": deviceType,
                     "addr": addr,
-                    "startDate": date,
-                    "endDate": date,
+                    "startDate": date_start,
+                    "endDate": date_end,
                     "start": start_index,
                 },
             )
@@ -202,32 +210,31 @@ class GrowattApi:
         return logs
 
     def get_plant_history_data(
-        self, datalogSn: str, deviceType: str, addr: str, date: str
+        self, datalogSn: str, device_type: str, plant_id: str, date_start: str, date_end: str
     ) -> List[Dict]:
-        url = self.__fetch_url("get_plant_history")
+        url = self.__fetch_url(f"get_plant_history_{device_type}")
         logs, start_index, have_next = [], 0, True
-
+        
         while have_next:
             response = self.session.post(
                 url,
                 data={
-                    "datalogSn": datalogSn,
-                    "deviceType": deviceType,
-                    "addr": addr,
-                    "startDate": date,
-                    "endDate": date,
+                    f"{device_type}Sn": datalogSn,
+                    "startDate": date_start,
+                    "endDate": date_end,
                     "start": start_index,
                 },
             )
             response_json = response.json()
 
             for log in response_json["obj"]["datas"]:
+                log['plant_id'] = plant_id
                 logs.append(log)
 
-            start_index = response_json["obj"]["start"]
             have_next = response_json["obj"]["haveNext"]
 
             if have_next:
+                start_index = response_json["obj"]["start"]
                 time.sleep(5)
 
         logs.reverse()
@@ -249,9 +256,10 @@ class GrowattApi:
 
 
 class Job:
-    PAC = "pac"
-    KWH = "kwh"
-    Meter = "meter"
+    # PAC = "pac"
+    # KWH = "kwh"
+    METER = "meter"
+    PLANT = "plant"
 
     def __init__(self, conf_path):
         self.conf = self.__load_conf(conf_path)
@@ -299,103 +307,119 @@ class Job:
                 table_name=self.KWH,
             )
 
-    def get_time_series_data_pac(self, date: datetime.date) -> List[Tuple]:
-        data = self.api.get_daily_energy_data(
-            self.conf.get("plant_id"),
-            f"{date.year}-{date.month}-{date.day}",
-        )
-        date = datetime.datetime.combine(date, datetime.datetime.min.time())
-        return list(
-            zip(
-                # converting to string type to enter DB
-                # 5 minutes, 288 times ~24 hours
-                [
-                    (date + datetime.timedelta(minutes=5 * count)).timestamp()
-                    for count in range(288)
-                ],
-                list(
-                    map(
-                        lambda x: 0 if not x else x,
-                        data.get("obj")[0]["datas"]["pac"],
-                    )
-                ),
-            )
-        )
+    # def get_time_series_data_pac(self, date: datetime.date) -> List[Tuple]:
+    #     data = self.api.get_daily_energy_data(
+    #         self.conf.get("plant_id"),
+    #         f"{date.year}-{date.month}-{date.day}",
+    #     )
+    #     date = datetime.datetime.combine(date, datetime.datetime.min.time())
+    #     return list(
+    #         zip(
+    #             # converting to string type to enter DB
+    #             # 5 minutes, 288 times ~24 hours
+    #             [
+    #                 (date + datetime.timedelta(minutes=5 * count)).timestamp()
+    #                 for count in range(288)
+    #             ],
+    #             list(
+    #                 map(
+    #                     lambda x: 0 if not x else x,
+    #                     data.get("obj")[0]["datas"]["pac"],
+    #                 )
+    #             ),
+    #         )
+    #     )
 
-    def get_time_series_data_kwh(self, date: datetime.date) -> List[Tuple]:
-        data = self.api.get_monthly_energy_data(
-            self.conf.get("plant_id"),
-            f"{date.year}-{date.month}",
-        )
-        date = datetime.datetime.combine(date, datetime.datetime.min.time()).replace(
-            day=1
-        )
+    # def get_time_series_data_kwh(self, date: datetime.date) -> List[Tuple]:
+    #     data = self.api.get_monthly_energy_data(
+    #         self.conf.get("plant_id"),
+    #         f"{date.year}-{date.month}",
+    #     )
+    #     date = datetime.datetime.combine(date, datetime.datetime.min.time()).replace(
+    #         day=1
+    #     )
 
-        return list(
-            zip(
-                # daily data
-                [
-                    (date + datetime.timedelta(days=count)).timestamp()
-                    for count in range(calendar.monthrange(date.year, date.month)[1])
-                ],
-                list(
-                    map(
-                        lambda x: 0 if not x else x,
-                        data.get("obj")[0]["datas"]["energy"],
-                    )
-                ),
-            )
-        )
+    #     return list(
+    #         zip(
+    #             # daily data
+    #             [
+    #                 (date + datetime.timedelta(days=count)).timestamp()
+    #                 for count in range(calendar.monthrange(date.year, date.month)[1])
+    #             ],
+    #             list(
+    #                 map(
+    #                     lambda x: 0 if not x else x,
+    #                     data.get("obj")[0]["datas"]["energy"],
+    #                 )
+    #             ),
+    #         )
+    #     )
 
-    def get_meters(self) -> List[Tuple]:
-        data = self.api.get_meters(
-            self.conf.get("plant_id"),
-        )
-        print(data)
+    def get_devices(self) -> List[Tuple]:
+        plants, meters = [], []
         
-    def get_plant_data(self, date: datetime.date) -> List[Tuple]:
-        data = self.api.get_plant_history_data(
-            self.conf.get("datalogSn"),
-            self.conf.get("deviceType"),
-            self.conf.get("addr"),
-            f"{date.year}-{date.month}-{date.day}",
-        )
+        for plant in self.api.get_plants():
+            plants.extend(self.api.get_plant_devices(plant['id']))
+            time.sleep(5)
+            meters.extend(self.api.get_meters(plant['id']))
 
-        result = list((
-            int(datetime.datetime(
-                item["calendar"]["year"], 
-                item["calendar"]["month"], 
-                item["calendar"]["dayOfMonth"], 
-                item["calendar"]["hourOfDay"], 
-                item["calendar"]["minute"], 
-                item["calendar"]["second"]
-            ).timestamp()),
-            item["dataLogSn"], 
-            item["posiActivePower"], 
-            item["reverActivePower"]) for item in data
+        return plants, meters
+        
+    def get_history(
+        self, date_start: datetime.date, date_end: datetime.date
+    ) -> List[Tuple]:
+        plants, meters = self.get_devices()
+
+        self._insert_plant(
+            self.plant_history(plants, date_start, date_end), 
+            table_name=self.PLANT
+        )
+        logger.info(f"Extract plant data from {date_start} to {date_end}")
+        
+        self._insert_meter(
+            self.meter_history(meters, date_start, date_end), 
+            table_name=self.METER
+        )
+        logger.info(f"Extract meter data from {date_start} to {date_end}")   
+
+    def plant_history(
+        self, plants: list, date_start: datetime.date, date_end: datetime.date
+    ):
+        data = []
+        for plant in plants:
+            data.extend(self.api.get_plant_history_data(
+                plant['sn'], 
+                plant['deviceTypeName'],
+                plant['plantId'],
+                f"{date_start.year}-{date_start.month}-{date_start.day}",
+                f"{date_end.year}-{date_end.month}-{date_end.day}",
+            ))
+            time.sleep(10)
+            
+        return list((
+            self.calendar_to_timestamp(item["calendar"]),
+            item["plant_id"],
+            item["pac"],
+            item["eacToday"],
+            item["eacTotal"]) for item in data
         )
         
-        self._insert_meter(result, table_name=self.Meter)
-        logger.info(f"Extract and insert meter for {date.year}-{date.month}-{date.day}.")
+    def meter_history(
+        self, meters: list, date_start: datetime.date, date_end: datetime.date
+    ):
+        data = []
+        for meter in meters:
+            data.extend(self.api.get_meter_history_data(
+                meter["datalogSn"],
+                meter["deviceType"],
+                meter["addr"],
+                f"{date_start.year}-{date_start.month}-{date_start.day}",
+                f"{date_end.year}-{date_end.month}-{date_end.day}",
+            ))
+            time.sleep(10)
 
-    def get_meter_data(self, date: datetime.date) -> List[Tuple]:
-        self.__create_table()
-        data = self.api.get_meter_history_data(
-            self.conf.get("datalogSn"),
-            self.conf.get("deviceType"),
-            self.conf.get("addr"),
-            f"{date.year}-{date.month}-{date.day}",
-        )
-
-        result = list((
-            int(datetime.datetime(
-                item["calendar"]["year"], 
-                item["calendar"]["month"], 
-                item["calendar"]["dayOfMonth"], 
-                item["calendar"]["hourOfDay"], 
-                item["calendar"]["minute"], 
-                item["calendar"]["second"]
-            ).timestamp()),
+        return list((
+            self.calendar_to_timestamp(item["calendar"]),
             item["dataLogSn"], 
             item["posiActivePower"], # Kw
             item["reverActivePower"], # Kw
@@ -403,28 +427,40 @@ class Job:
             item["reverseActiveEnergy"] # w
             ) for item in data
         )
-        
-        self._insert_meter(result, table_name=self.Meter)
-        logger.info(f"Extract and insert meter for {date.year}-{date.month}-{date.day}.")
 
     def run(self, backfill=False):
-        if backfill:
-            self.backfill_data()
-            logger.info("Backfilling completed")
-            sys.exit(0)
+        self.__create_table()
         today = datetime.datetime.now()
-        self._insert(self.get_time_series_data_pac(today.date()), table_name=self.PAC)
-        # last date
-        self._insert(
-            self.get_time_series_data_kwh(today.date())[-1], table_name=self.KWH
-        )
-
+        self.get_history(today.date(), today.date())
+        return
+        
+        # print (job.get_time_series_data_pac(today.date()))
+        job.get_meter_data(today.date())
+        
+        job.get_plant_data(today.date())
+        
+        # if backfill:
+        #     self.backfill_data()
+        #     logger.info("Backfilling completed")
+        #     sys.exit(0)
+        # today = datetime.datetime.now()
+        # self._insert(self.get_time_series_data_pac(today.date()), table_name=self.PAC)
+        # # last date
+        # self._insert(
+        #     self.get_time_series_data_kwh(today.date())[-1], table_name=self.KWH
+        # )
+    
     def __create_table(self):
         connection = sqlite3.connect(DATABASE_NAME)
         cursor = connection.cursor()
-        cursor.execute(f"CREATE TABLE {self.PAC}(timestamp, plantId, watt, PRIMARY KEY (timestamp, plantId))")
-        cursor.execute(f"CREATE TABLE {self.KWH}(timestamp, plantId, kilowatthour, PRIMARY KEY (timestamp, plantId))")
-        cursor.execute(f"CREATE TABLE {self.Meter}(timestamp, dataLogSn, posiActivePower, reverActivePower, activePower, reverseActiveEnergy, PRIMARY KEY (timestamp, dataLogSn))")
+
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.METER}'")
+        if not cursor.fetchone():
+            cursor.execute(f"CREATE TABLE {self.METER}(timestamp, dataLogSn, posiActivePower, reverActivePower, activePower, reverseActiveEnergy, PRIMARY KEY (timestamp, dataLogSn))")
+        
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.PLANT}'")
+        if not cursor.fetchone():
+            cursor.execute(f"CREATE TABLE {self.PLANT}(timestamp, plantId, pac, eacToday, eacTotal, PRIMARY KEY (timestamp, plantId))")
 
     def _insert_meter(self, time_series_data: List[Tuple], table_name: str) -> None:
         connection = sqlite3.connect(DATABASE_NAME)
@@ -435,6 +471,18 @@ class Job:
 
         cursor.executemany(
             f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?, ?, ?, ?)", time_series_data
+        )
+        connection.commit()
+
+    def _insert_plant(self, time_series_data: List[Tuple], table_name: str) -> None:
+        connection = sqlite3.connect(DATABASE_NAME)
+        cursor = connection.cursor()
+
+        if type(time_series_data) != list:
+            time_series_data = [time_series_data]
+
+        cursor.executemany(
+            f"INSERT OR REPLACE INTO {table_name} VALUES(?, ?, ?, ?, ?)", time_series_data
         )
         connection.commit()
 
@@ -450,16 +498,25 @@ class Job:
         )
         connection.commit()
 
-
+    def calendar_to_timestamp(self, calendar: list):
+        return int(datetime.datetime(
+            calendar["year"], 
+            calendar["month"], 
+            calendar["dayOfMonth"], 
+            calendar["hourOfDay"], 
+            calendar["minute"], 
+            calendar["second"]
+        ).timestamp())
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--conf", action="append", default="config.json")
     args = parser.parse_args()
 
     job = Job(args.conf)
-    today = datetime.datetime.now()
-    # print (job.get_time_series_data_pac(today.date()))
-    job.get_meter_data(today.date())
+    job.run()
+
+    
     # job.run(not pathlib.Path(DATABASE_NAME).exists())
 
     # scheduler.add_job(
