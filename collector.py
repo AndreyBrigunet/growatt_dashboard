@@ -430,14 +430,9 @@ class Job:
 
     def run(self, backfill=False):
         self.__create_table()
-        today = datetime.datetime.now()
+        today = datetime.datetime.strptime("2023-10-12", "%Y-%m-%d")
         self.get_history(today.date(), today.date())
         return
-        
-        # print (job.get_time_series_data_pac(today.date()))
-        job.get_meter_data(today.date())
-        
-        job.get_plant_data(today.date())
         
         # if backfill:
         #     self.backfill_data()
