@@ -430,7 +430,8 @@ class Job:
 
     def run(self, backfill=False):
         self.__create_table()
-        today = datetime.datetime.strptime("2023-10-12", "%Y-%m-%d")
+        # today = datetime.datetime.strptime("2023-10-12", "%Y-%m-%d")
+        today = datetime.datetime.now()
         self.get_history(today.date(), today.date())
         return
         
