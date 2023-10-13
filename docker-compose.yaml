@@ -17,4 +17,6 @@ services:
       - './grafana_config/grafana.ini:/etc/grafana/grafana.ini'
       - './data:/app/data'
     environment:
-      - GF_INSTALL_PLUGINS=frser-sqlite-datasource
+      # - GF_INSTALL_PLUGINS=frser-sqlite-datasource
+      - GF_INSTALL_PLUGINS=frser-sqlite-datasource, grafana-piechart-panel, https://github.com/yesoreyeram/yesoreyeram-boomtable-panel/releases/download/v1.5.0-alpha.3/yesoreyeram-boomtable-panel-1.5.0-alpha.3.zip;yesoreyeram-boomtable-panel, grafana-influxdb-flux-datasource, fetzerch-sunandmoon-datasource, simpod-json-datasource
+
