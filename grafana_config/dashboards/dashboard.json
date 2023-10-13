@@ -81,9 +81,9 @@
                         "type": "frser-sqlite-datasource",
                         "uid": "P2D2EEF3E092AF52B"
                     },
-                    "queryText": "SELECT SUM(eacTotal) FROM (SELECT plantId, eacTotal FROM plant GROUP BY plantId ORDER BY timestamp ASC)",
+                    "queryText": "SELECT SUM(eacTotal) FROM (SELECT plantId, eacTotal, MAX(timestamp) FROM plant GROUP BY plantId)",
                     "queryType": "table",
-                    "rawQueryText": "SELECT SUM(eacTotal) FROM (SELECT plantId, eacTotal FROM plant GROUP BY plantId ORDER BY timestamp ASC)",
+                    "rawQueryText": "SELECT SUM(eacTotal) FROM (SELECT plantId, eacTotal, MAX(timestamp) FROM plant GROUP BY plantId)",
                     "refId": "A",
                     "timeColumns": [
                         "timestamp"
