@@ -14,7 +14,7 @@ services:
       - './grafana_config/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml'
       - './grafana_config/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml'
       - './grafana_config/dashboards/dashboard.json:/app/dashboards/dashboard.json'
-      - './grafana_config/dashboards/dashboard.json:/app/dashboards/powerwall-dashboard.json'
+      - './grafana_config/dashboards/powerwall-dashboard.json:/app/dashboards/powerwall-dashboard.json'
       - './grafana_config/grafana.ini:/etc/grafana/grafana.ini'
       - './data:/app/data'
     environment:
