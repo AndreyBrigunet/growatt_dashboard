@@ -7,7 +7,8 @@ datasources:
     editable: true
     jsonData:
       path: /app/data/solar_data.sqlite
-  - name: InfluxDB_v2_Flux
+
+  - name: InfluxDB
     type: influxdb
     access: proxy
     url: http://localhost:8086
@@ -19,7 +20,7 @@ datasources:
     secureJsonData:
       token: token
 
-  - name: sunandmoon
+  - name: Sun and Moon
     type: fetzerch-sunandmoon-datasource
     jsonData:
       latitude: 48.0
