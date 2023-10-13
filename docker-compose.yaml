@@ -19,5 +19,6 @@ services:
       - './data:/app/data'
     environment:
       - GF_PANELS_DISABLE_SANITIZE_HTML=true
+      - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_INSTALL_PLUGINS=frser-sqlite-datasource, grafana-piechart-panel, https://github.com/yesoreyeram/yesoreyeram-boomtable-panel/releases/download/v1.5.0-alpha.3/yesoreyeram-boomtable-panel-1.5.0-alpha.3.zip;yesoreyeram-boomtable-panel, grafana-influxdb-flux-datasource, fetzerch-sunandmoon-datasource, simpod-json-datasource
 

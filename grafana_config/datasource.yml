@@ -7,3 +7,10 @@ datasources:
     editable: true
     jsonData:
       path: /app/data/solar_data.sqlite
+  - name: InfluxDB
+    type: grafana-influxdb-flux-datasource
+    editable: true
+  - name: Sun and Moon
+    type: fetzerch-sunandmoon-datasource
+    latitude: 28
+    longitude: 47
