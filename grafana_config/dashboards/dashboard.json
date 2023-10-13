@@ -81,9 +81,9 @@
                         "type": "frser-sqlite-datasource",
                         "uid": "P2D2EEF3E092AF52B"
                     },
-                    "queryText": "select sum(kilowatthour) from kwh",
+                    "queryText": "select eacTotal from plant",
                     "queryType": "table",
-                    "rawQueryText": "select sum(kilowatthour) from kwh",
+                    "rawQueryText": "select eacTotal from plant",
                     "refId": "A",
                     "timeColumns": [
                         "timestamp"
